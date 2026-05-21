@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scroll Animation | Alexa</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #6c63ff;
+      --primary-dark: #5a52d5;
+      --secondary: #ff6b6b;
+      --bg-dark: #0a0a1a;
+      --text-primary: #ffffff;
+      --text-secondary: #b8b8d0;
+      --text-muted: #6e6e8a;
+    }
+
+    html {
+      font-size: 16px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* Loading screen */
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+
+    .loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(108, 99, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loader-text {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .loader-progress {
+      margin-top: 12px;
+      width: 200px;
+      height: 3px;
+      background: rgba(108, 99, 255, 0.15);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .loader-progress-bar {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Back link */
+    .back-link {
+      position: fixed;
+      top: 20px;
+      left: 24px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: rgba(10, 10, 26, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(108, 99, 255, 0.2);
+      border-radius: 50px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .back-link:hover {
+      color: var(--text-primary);
+      border-color: var(--primary);
+      background: rgba(108, 99, 255, 0.1);
+    }
+
+    .back-link svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Frame counter */
+    .frame-counter {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      z-index: 100;
+      padding: 10px 20px;
+      background: rgba(10, 10, 26, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(108, 99, 255, 0.2);
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .frame-counter .current {
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    /* Progress bar */
+    .scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      z-index: 200;
+      transition: width 0.05s linear;
+    }
+
+    /* Canvas container */
+    .canvas-container {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-dark);
+    }
+
+    #frameCanvas {
+      max-width: 100vw;
+      max-height: 100vh;
+      object-fit: contain;
+    }
+
+    /* Scroll spacer */
+    .scroll-spacer {
+      height: 500vh;
+      position: relative;
+      pointer-events: none;
+    }
+
+    /* Scroll hint */
+    .scroll-hint {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    .scroll-hint.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scroll-hint span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .scroll-arrow {
+      width: 20px;
+      height: 20px;
+      border-right: 2px solid var(--text-muted);
+      border-bottom: 2px solid var(--text-muted);
+      transform: rotate(45deg);
+      animation: bounceArrow 2s ease infinite;
+    }
+
+    @keyframes bounceArrow {
+      0%, 100% { transform: rotate(45deg) translate(0, 0); opacity: 0.5; }
+      50% { transform: rotate(45deg) translate(5px, 5px); opacity: 1; }
+    }
+
+    /* Vignette overlay for cinematic feel */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div class="loader" id="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Loading frames</div>
+    <div class="loader-progress">
+      <div class="loader-progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- Scroll Progress Bar -->
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- Back Link -->
+  <a href="index.html" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"></line>
+      <polyline points="12 19 5 12 12 5"></polyline>
+    </svg>
+    Back
+  </a>
+
+  <!-- Frame Counter -->
+  <div class="frame-counter" id="frameCounter">
+    <span class="current">01</span> / 38
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas-container">
+    <canvas id="frameCanvas"></canvas>
+  </div>
+
+  <!-- Vignette -->
+  <div class="vignette"></div>
+
+  <!-- Scroll Hint -->
+  <div class="scroll-hint" id="scrollHint">
+    <span>Scroll to animate</span>
+    <div class="scroll-arrow"></div>
+  </div>
+
+  <!-- Scroll Spacer -->
+  <div class="scroll-spacer"></div>
+
+  <script>
+    const FRAME_COUNT = 38;
+    const frames = [];
+    let loadedCount = 0;
+    let currentFrame = 0;
+
+    const canvas = document.getElementById('frameCanvas');
+    const ctx = canvas.getContext('2d');
+    const loader = document.getElementById('loader');
+    const progressBar = document.getElementById('progressBar');
+    const frameCounter = document.getElementById('frameCounter');
+    const scrollProgress = document.getElementById('scrollProgress');
+    const scrollHint = document.getElementById('scrollHint');
+
+    function framePath(index) {
+      const num = String(index + 1).padStart(3, '0');
+      return `frames/ezgif-frame-${num}.jpg`;
+    }
+
+    function preloadFrames() {
+      return new Promise((resolve) => {
+        for (let i = 0; i < FRAME_COUNT; i++) {
+          const img = new Image();
+          img.src = framePath(i);
+          img.onload = () => {
+            loadedCount++;
+            const pct = Math.round((loadedCount / FRAME_COUNT) * 100);
+            progressBar.style.width = pct + '%';
+            if (loadedCount === FRAME_COUNT) resolve();
+          };
+          img.onerror = () => {
+            loadedCount++;
+            if (loadedCount === FRAME_COUNT) resolve();
+          };
+          frames[i] = img;
+        }
+      });
+    }
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(dpr, dpr);
+      drawFrame(currentFrame);
+    }
+
+    function drawFrame(index) {
+      const img = frames[index];
+      if (!img || !img.complete) return;
+
+      const cw = window.innerWidth;
+      const ch = window.innerHeight;
+
+      ctx.clearRect(0, 0, cw, ch);
+
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const canvasRatio = cw / ch;
+
+      let drawW, drawH, drawX, drawY;
+
+      if (canvasRatio > imgRatio) {
+        drawW = cw;
+        drawH = cw / imgRatio;
+      } else {
+        drawH = ch;
+        drawW = ch * imgRatio;
+      }
+
+      drawX = (cw - drawW) / 2;
+      drawY = (ch - drawH) / 2;
+
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    }
+
+    function onScroll() {
+      const scrollTop = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollFraction = Math.min(scrollTop / maxScroll, 1);
+
+      const frameIndex = Math.min(
+        Math.floor(scrollFraction * FRAME_COUNT),
+        FRAME_COUNT - 1
+      );
+
+      if (frameIndex !== currentFrame) {
+        currentFrame = frameIndex;
+        requestAnimationFrame(() => drawFrame(currentFrame));
+
+        const display = String(currentFrame + 1).padStart(2, '0');
+        frameCounter.querySelector('.current').textContent = display;
+      }
+
+      scrollProgress.style.width = (scrollFraction * 100) + '%';
+
+      if (scrollTop > 100) {
+        scrollHint.classList.add('hidden');
+      } else {
+        scrollHint.classList.remove('hidden');
+      }
+    }
+
+    async function init() {
+      await preloadFrames();
+
+      loader.classList.add('hidden');
+
+      resizeCanvas();
+      drawFrame(0);
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', resizeCanvas);
+    }
+
+    init();
+  </script>
+</body>
+</html>
