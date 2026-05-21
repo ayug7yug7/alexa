@@ -1,37 +1,47 @@
 // ===== Navbar Scroll Effect =====
 const navbar = document.getElementById('navbar');
+const promoBanner = document.querySelector('.promo-banner');
 
 window.addEventListener('scroll', () => {
-  navbar.classList.toggle('scrolled', window.scrollY > 50);
+  const scrolled = window.scrollY > 50;
+  navbar.classList.toggle('scrolled', scrolled);
+  if (promoBanner) {
+    promoBanner.style.transform = scrolled ? 'translateY(-100%)' : 'translateY(0)';
+    promoBanner.style.transition = 'transform 0.4s ease';
+  }
 });
 
 // ===== Mobile Navigation =====
 const navToggle = document.getElementById('navToggle');
 const navLinks = document.getElementById('navLinks');
 
-navToggle.addEventListener('click', () => {
-  navToggle.classList.toggle('open');
-  navLinks.classList.toggle('open');
-});
-
-navLinks.querySelectorAll('a').forEach(link => {
-  link.addEventListener('click', () => {
-    navToggle.classList.remove('open');
-    navLinks.classList.remove('open');
+if (navToggle && navLinks) {
+  navToggle.addEventListener('click', () => {
+    navToggle.classList.toggle('open');
+    navLinks.classList.toggle('open');
+    document.body.style.overflow = navLinks.classList.contains('open') ? 'hidden' : '';
   });
-});
+
+  navLinks.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      navToggle.classList.remove('open');
+      navLinks.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+  });
+}
 
 // ===== Active Nav Link on Scroll =====
 const sections = document.querySelectorAll('section[id]');
 
 function updateActiveNav() {
-  const scrollY = window.scrollY + 100;
+  const scrollY = window.scrollY + 150;
 
   sections.forEach(section => {
     const top = section.offsetTop;
     const height = section.offsetHeight;
     const id = section.getAttribute('id');
-    const link = document.querySelector(`.nav-links a[href="#${id}"]`);
+    const link = document.querySelector(`.nav-links-left a[href="#${id}"]`);
 
     if (link) {
       link.classList.toggle('active', scrollY >= top && scrollY < top + height);
@@ -41,9 +51,9 @@ function updateActiveNav() {
 
 window.addEventListener('scroll', updateActiveNav);
 
-// ===== Scroll Reveal =====
+// ===== Scroll Reveal Animation =====
 function reveal() {
-  const elements = document.querySelectorAll('.reveal');
+  const elements = document.querySelectorAll('.reveal, .reveal-left, .reveal-right');
   const windowHeight = window.innerHeight;
 
   elements.forEach(el => {
@@ -54,131 +64,272 @@ function reveal() {
   });
 }
 
-// Add reveal class to animatable elements
 document.querySelectorAll(
-  '.service-card, .portfolio-item, .about-grid, .contact-grid, .skill-item'
-).forEach(el => el.classList.add('reveal'));
+  '.product-card, .testimonial-card, .feature-list li, .comfort-icon, .footer-links'
+).forEach((el, i) => {
+  el.classList.add('reveal');
+  el.style.transitionDelay = `${i * 0.08}s`;
+});
+
+document.querySelectorAll('.powerful-text, .comfort-headphone').forEach(el => {
+  el.classList.add('reveal-left');
+});
+
+document.querySelectorAll('.powerful-product, .comfort-text').forEach(el => {
+  el.classList.add('reveal-right');
+});
 
 window.addEventListener('scroll', reveal);
 window.addEventListener('load', reveal);
 
-// ===== Skill Bar Animation =====
-function animateSkills() {
-  const skillItems = document.querySelectorAll('.skill-item');
+// ===== Hero Headphone Parallax on Mouse Move =====
+const heroHeadphone = document.getElementById('heroHeadphone');
 
-  skillItems.forEach(item => {
-    const rect = item.getBoundingClientRect();
-    if (rect.top < window.innerHeight - 50) {
-      const level = item.getAttribute('data-skill');
-      const fill = item.querySelector('.skill-fill');
-      if (fill && fill.style.width === '0px' || fill.style.width === '') {
-        fill.style.width = level + '%';
-      }
-    }
+if (heroHeadphone) {
+  document.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 20;
+    const y = (e.clientY / window.innerHeight - 0.5) * 20;
+    heroHeadphone.style.transform = `
+      translateY(${Math.sin(Date.now() / 1000) * 15}px)
+      rotateY(${x}deg)
+      rotateX(${-y}deg)
+    `;
   });
 }
 
-window.addEventListener('scroll', animateSkills);
-window.addEventListener('load', animateSkills);
+// ===== Comfort Section - Headphone Rotate on Scroll =====
+const comfortHeadphone = document.getElementById('comfortHeadphone');
 
-// ===== Portfolio Filter =====
-const filterBtns = document.querySelectorAll('.filter-btn');
-const portfolioItems = document.querySelectorAll('.portfolio-item');
+if (comfortHeadphone) {
+  let comfortAnimFrame;
 
-filterBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    filterBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  function animateComfortHeadphone() {
+    const rect = comfortHeadphone.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
 
-    const filter = btn.getAttribute('data-filter');
-
-    portfolioItems.forEach(item => {
-      const category = item.getAttribute('data-category');
-      if (filter === 'all' || category === filter) {
-        item.classList.remove('hidden');
-        item.style.animation = 'fadeInUp 0.5s ease forwards';
-      } else {
-        item.classList.add('hidden');
-      }
-    });
-  });
-});
-
-// ===== Contact Form =====
-const contactForm = document.getElementById('contactForm');
-
-contactForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-
-  const btn = contactForm.querySelector('button[type="submit"]');
-  const originalText = btn.textContent;
-
-  btn.textContent = 'Sending...';
-  btn.disabled = true;
-
-  setTimeout(() => {
-    btn.textContent = 'Message Sent!';
-    btn.style.background = '#27ae60';
-    btn.style.borderColor = '#27ae60';
-    contactForm.reset();
-
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.style.background = '';
-      btn.style.borderColor = '';
-      btn.disabled = false;
-    }, 2500);
-  }, 1200);
-});
-
-// ===== Particle Background =====
-function createParticles() {
-  const container = document.getElementById('particles');
-  if (!container) return;
-
-  const count = 50;
-
-  for (let i = 0; i < count; i++) {
-    const particle = document.createElement('div');
-    const size = Math.random() * 4 + 1;
-
-    Object.assign(particle.style, {
-      position: 'absolute',
-      width: size + 'px',
-      height: size + 'px',
-      background: `rgba(108, 99, 255, ${Math.random() * 0.5 + 0.1})`,
-      borderRadius: '50%',
-      left: Math.random() * 100 + '%',
-      top: Math.random() * 100 + '%',
-      animation: `floatParticle ${Math.random() * 10 + 10}s linear infinite`,
-      animationDelay: `-${Math.random() * 10}s`
-    });
-
-    container.appendChild(particle);
+    if (rect.top < windowHeight && rect.bottom > 0) {
+      const progress = 1 - (rect.top / windowHeight);
+      const rotation = (progress - 0.5) * 30;
+      comfortHeadphone.style.transform = `perspective(800px) rotateY(${rotation}deg)`;
+    }
+    comfortAnimFrame = requestAnimationFrame(animateComfortHeadphone);
   }
 
-  // Inject keyframes for particle animation
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes floatParticle {
-      0% { transform: translate(0, 0) scale(1); opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
-      100% { transform: translate(${Math.random() > 0.5 ? '' : '-'}${Math.random() * 200}px, -${Math.random() * 500 + 300}px) scale(0); opacity: 0; }
-    }
-  `;
-  document.head.appendChild(style);
+  window.addEventListener('scroll', () => {
+    cancelAnimationFrame(comfortAnimFrame);
+    comfortAnimFrame = requestAnimationFrame(animateComfortHeadphone);
+  });
 }
 
-createParticles();
+// ===== Earbuds Showcase Hover Effect =====
+const earbudsShowcase = document.getElementById('earbudsShowcase');
 
-// ===== Smooth Scroll for Safari =====
+if (earbudsShowcase) {
+  const container = earbudsShowcase.closest('.product-showcase');
+  if (container) {
+    container.addEventListener('mousemove', (e) => {
+      const rect = container.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
+      const y = ((e.clientY - rect.top) / rect.height - 0.5) * 10;
+      earbudsShowcase.style.transform = `
+        perspective(500px)
+        rotateY(${x}deg)
+        rotateX(${-y}deg)
+        translateY(${Math.sin(Date.now() / 1200) * 8}px)
+      `;
+    });
+
+    container.addEventListener('mouseleave', () => {
+      earbudsShowcase.style.transform = '';
+    });
+  }
+}
+
+// ===== Product Card Tilt Effect =====
+document.querySelectorAll('.product-card').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 8;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 8;
+    card.style.transform = `perspective(600px) rotateY(${x}deg) rotateX(${-y}deg) translateY(-8px)`;
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+  });
+});
+
+// ===== Sound Wave Particles in Hero =====
+function createSoundWaves() {
+  const heroSection = document.querySelector('.hero');
+  if (!heroSection) return;
+
+  for (let i = 0; i < 3; i++) {
+    const wave = document.createElement('div');
+    wave.className = 'sound-wave';
+    wave.style.left = '50%';
+    wave.style.top = '50%';
+    wave.style.transform = 'translate(-50%, -50%)';
+    wave.style.animationDelay = `${i * 1}s`;
+    heroSection.appendChild(wave);
+  }
+}
+
+createSoundWaves();
+
+// ===== Audio Visualizer Animation in Hero =====
+function createAudioVisualizer() {
+  const heroSection = document.querySelector('.hero-bg-gradient');
+  if (!heroSection) return;
+
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.15';
+  heroSection.appendChild(canvas);
+
+  const ctx = canvas.getContext('2d');
+  let animId;
+
+  function resize() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const bars = 60;
+    const barWidth = canvas.width / bars;
+    const time = Date.now() / 1000;
+
+    for (let i = 0; i < bars; i++) {
+      const height = Math.abs(Math.sin(time * 2 + i * 0.3)) * 80 +
+                     Math.abs(Math.sin(time * 3 + i * 0.5)) * 40;
+      const x = i * barWidth;
+      const y = canvas.height - height;
+
+      const gradient = ctx.createLinearGradient(x, y, x, canvas.height);
+      gradient.addColorStop(0, 'rgba(200, 255, 0, 0.4)');
+      gradient.addColorStop(1, 'rgba(200, 255, 0, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x + 2, y, barWidth - 4, height);
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  draw();
+}
+
+createAudioVisualizer();
+
+// ===== Smooth Counter Animation for Stats =====
+function animateCounters() {
+  document.querySelectorAll('[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count);
+    const duration = 2000;
+    const start = performance.now();
+
+    function update(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(target * eased);
+
+      if (progress < 1) requestAnimationFrame(update);
+    }
+
+    requestAnimationFrame(update);
+  });
+}
+
+// ===== Newsletter Form =====
+const newsletterForm = document.getElementById('newsletterForm');
+if (newsletterForm) {
+  newsletterForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const btn = newsletterForm.querySelector('button');
+    const input = newsletterForm.querySelector('input');
+    const originalText = btn.textContent;
+
+    btn.textContent = 'Subscribing...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      btn.textContent = 'Subscribed!';
+      btn.style.background = '#27ae60';
+      input.value = '';
+
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 2500);
+    }, 1000);
+  });
+}
+
+// ===== Magnetic Button Effect =====
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('mousemove', (e) => {
+    const rect = btn.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
+  });
+
+  btn.addEventListener('mouseleave', () => {
+    btn.style.transform = '';
+  });
+});
+
+// ===== Parallax Background Layers =====
+window.addEventListener('scroll', () => {
+  const scrollY = window.scrollY;
+  const heroGradient = document.querySelector('.hero-bg-gradient');
+  if (heroGradient) {
+    heroGradient.style.transform = `translateY(${scrollY * 0.3}px)`;
+  }
+});
+
+// ===== Intersection Observer for Performance =====
+if ('IntersectionObserver' in window) {
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, observerOptions);
+
+  document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => {
+    observer.observe(el);
+  });
+}
+
+// ===== Smooth Scroll for Anchor Links =====
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', function (e) {
+  anchor.addEventListener('click', function(e) {
     e.preventDefault();
     const target = document.querySelector(this.getAttribute('href'));
     if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  });
+});
+
+// ===== Loading Animation =====
+window.addEventListener('load', () => {
+  document.body.style.opacity = '0';
+  document.body.style.transition = 'opacity 0.5s ease';
+  requestAnimationFrame(() => {
+    document.body.style.opacity = '1';
   });
 });
