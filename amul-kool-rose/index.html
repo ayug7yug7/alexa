@@ -230,6 +230,55 @@
         transform: translateX(-50%) translateY(0);
         opacity: 1;
     }
+
+    /* Login modal */
+    .login-overlay {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .login-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .login-modal {
+        transform: scale(0.9) translateY(20px);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .login-modal.open {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .otp-inputs {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    .otp-inputs input {
+        width: 48px;
+        height: 56px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        border: 2px solid #dfbec3;
+        border-radius: 12px;
+        background: white;
+        color: #1d1b1c;
+        transition: border-color 0.2s ease;
+    }
+    .otp-inputs input:focus {
+        border-color: #af204e;
+        outline: none;
+    }
+    .login-step { display: none; }
+    .login-step.active { display: block; }
+    .otp-demo-badge {
+        background: linear-gradient(135deg, #f8d8db 0%, #fef0f2 100%);
+        border: 1px solid #dfbec3;
+    }
 </style>
 </head>
 <body class="font-body text-on-background antialiased selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
@@ -252,7 +301,11 @@
         <a class="text-on-surface font-body text-body-lg py-3 px-4 rounded-xl hover:bg-secondary-container transition-colors" href="#shop">Shop</a>
         <a class="text-on-surface font-body text-body-lg py-3 px-4 rounded-xl hover:bg-secondary-container transition-colors" href="#where-to-buy">Where to Buy</a>
     </nav>
-    <div class="mt-auto p-6">
+    <div class="mt-auto p-6 space-y-3">
+        <button onclick="openLoginModal(); closeMenu();" id="mobileLoginBtn" class="w-full flex items-center justify-center gap-2 text-primary font-body font-bold text-label-bold px-6 py-4 rounded-full border-2 border-primary hover:bg-primary/5 transition-all">
+            <span class="material-symbols-outlined text-[20px]">person</span>
+            <span id="mobileLoginText">Login</span>
+        </button>
         <button class="w-full bg-primary text-on-primary font-body font-bold text-label-bold px-6 py-4 rounded-full hover:bg-primary-container transition-all">
             Order Now
         </button>
@@ -272,9 +325,15 @@
             <a class="nav-link text-on-surface-variant hover:text-primary transition-colors font-body font-bold text-label-bold hover:bg-primary/5 rounded-full px-4 py-2" href="#shop">Shop</a>
             <a class="nav-link text-on-surface-variant hover:text-primary transition-colors font-body font-bold text-label-bold hover:bg-primary/5 rounded-full px-4 py-2" href="#where-to-buy">Where to Buy</a>
         </div>
-        <button class="bg-primary text-on-primary font-body font-bold text-label-bold px-6 py-3 rounded-full hover:bg-primary-container transition-all soft-shadow hidden md:block">
-            Order Now
-        </button>
+        <div class="hidden md:flex items-center gap-3">
+            <button onclick="openLoginModal()" id="navLoginBtn" class="flex items-center gap-2 text-primary font-body font-bold text-label-bold px-5 py-3 rounded-full border-2 border-primary hover:bg-primary/5 transition-all">
+                <span class="material-symbols-outlined text-[20px]">person</span>
+                <span id="navLoginText">Login</span>
+            </button>
+            <button class="bg-primary text-on-primary font-body font-bold text-label-bold px-6 py-3 rounded-full hover:bg-primary-container transition-all soft-shadow">
+                Order Now
+            </button>
+        </div>
         <button class="md:hidden text-primary p-2" id="mobileToggle">
             <span class="material-symbols-outlined text-[28px]">menu</span>
         </button>
@@ -862,6 +921,115 @@
     </div>
 </footer>
 
+<!-- Login Modal Overlay -->
+<div class="login-overlay fixed inset-0 bg-black/50 z-[100]" id="loginOverlay" onclick="closeLoginModal()"></div>
+
+<!-- Login Modal -->
+<div class="login-modal fixed inset-0 z-[110] flex items-center justify-center p-4" id="loginModal">
+    <div class="bg-white rounded-[2rem] w-full max-w-md overflow-hidden soft-shadow" onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="bg-primary p-6 text-center relative">
+            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-white/80 hover:text-white">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <span class="material-symbols-outlined text-white text-[48px] mb-2">account_circle</span>
+            <h3 class="font-headline text-headline-md text-white" id="loginModalTitle">Welcome Back</h3>
+            <p class="font-body text-label-sm text-white/80 mt-1" id="loginModalSubtitle">Sign in with your phone number</p>
+        </div>
+
+        <div class="p-8">
+            <!-- Step 1: Phone Number -->
+            <div class="login-step active" id="loginStep1">
+                <label class="font-body text-label-sm text-on-surface-variant block mb-2">Phone Number</label>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="font-body font-bold text-on-surface bg-surface-container rounded-xl px-4 py-3.5 border-2 border-outline-variant/50">+91</span>
+                    <input type="tel" id="phoneInput" maxlength="10" placeholder="Enter 10-digit number"
+                        class="flex-1 bg-white border-2 border-outline-variant/50 rounded-xl py-3.5 px-4 font-body text-body-md text-on-surface focus:border-primary focus:ring-0 transition-colors"
+                        oninput="this.value=this.value.replace(/\D/g,'')">
+                </div>
+                <p class="font-body text-label-sm text-error mb-4 hidden" id="phoneError">Please enter a valid 10-digit phone number</p>
+                <button onclick="sendOtp()" class="w-full bg-primary text-on-primary font-body font-bold text-label-bold py-4 rounded-full hover:bg-primary-container transition-all" id="sendOtpBtn">
+                    Send OTP
+                </button>
+                <p class="text-center font-body text-label-sm text-on-surface-variant mt-4">
+                    We'll send a one-time password to verify your number
+                </p>
+            </div>
+
+            <!-- Step 2: OTP Verification -->
+            <div class="login-step" id="loginStep2">
+                <p class="font-body text-body-md text-on-surface-variant text-center mb-2">Enter the OTP sent to</p>
+                <p class="font-body font-bold text-on-surface text-center mb-1" id="otpPhoneDisplay">+91 98765 43210</p>
+                <div class="otp-demo-badge rounded-xl px-4 py-2 text-center mb-6">
+                    <p class="font-body text-label-sm text-primary">
+                        <span class="material-symbols-outlined text-[14px] align-middle">info</span>
+                        Demo OTP: <span class="font-bold" id="demoOtpDisplay">----</span>
+                    </p>
+                </div>
+                <div class="otp-inputs mb-4" id="otpInputs">
+                    <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 0)" onkeydown="handleOtpKeydown(event, 0)">
+                    <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 1)" onkeydown="handleOtpKeydown(event, 1)">
+                    <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 2)" onkeydown="handleOtpKeydown(event, 2)">
+                    <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 3)" onkeydown="handleOtpKeydown(event, 3)">
+                </div>
+                <p class="font-body text-label-sm text-error mb-4 hidden text-center" id="otpError">Incorrect OTP. Please try again.</p>
+                <button onclick="verifyOtp()" class="w-full bg-primary text-on-primary font-body font-bold text-label-bold py-4 rounded-full hover:bg-primary-container transition-all mb-3" id="verifyOtpBtn">
+                    Verify OTP
+                </button>
+                <div class="flex items-center justify-between">
+                    <button onclick="goToStep(1)" class="font-body text-label-sm text-primary hover:underline">
+                        <span class="material-symbols-outlined text-[14px] align-middle">arrow_back</span> Change number
+                    </button>
+                    <button onclick="resendOtp()" class="font-body text-label-sm text-primary hover:underline" id="resendBtn">
+                        Resend OTP
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Profile (Name entry for new users) -->
+            <div class="login-step" id="loginStep3">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                        <span class="material-symbols-outlined text-primary text-[40px]">person</span>
+                    </div>
+                    <p class="font-body text-body-md text-on-surface-variant">Almost there! Tell us your name</p>
+                </div>
+                <label class="font-body text-label-sm text-on-surface-variant block mb-2">Your Name</label>
+                <input type="text" id="nameInput" placeholder="Enter your name"
+                    class="w-full bg-white border-2 border-outline-variant/50 rounded-xl py-3.5 px-4 font-body text-body-md text-on-surface focus:border-primary focus:ring-0 transition-colors mb-4">
+                <p class="font-body text-label-sm text-error mb-4 hidden" id="nameError">Please enter your name</p>
+                <button onclick="saveProfile()" class="w-full bg-primary text-on-primary font-body font-bold text-label-bold py-4 rounded-full hover:bg-primary-container transition-all">
+                    Get Started
+                </button>
+            </div>
+
+            <!-- Step 4: Logged-in Profile View -->
+            <div class="login-step" id="loginStep4">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto mb-3">
+                        <span class="font-headline text-white text-[32px] font-bold" id="profileInitials">AK</span>
+                    </div>
+                    <h4 class="font-headline text-headline-md text-on-surface" id="profileName">Ayush Kumar</h4>
+                    <p class="font-body text-label-sm text-on-surface-variant" id="profilePhone">+91 98765 43210</p>
+                </div>
+                <div class="bg-surface-container rounded-2xl p-5 space-y-4 mb-6">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary text-[20px]">shopping_bag</span>
+                        <span class="font-body text-body-md text-on-surface" id="profileOrders">0 orders placed</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-primary text-[20px]">calendar_today</span>
+                        <span class="font-body text-body-md text-on-surface" id="profileJoined">Member since today</span>
+                    </div>
+                </div>
+                <button onclick="logout()" class="w-full border-2 border-error text-error font-body font-bold text-label-bold py-4 rounded-full hover:bg-error-container/30 transition-all">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // Mobile menu
 const mobileToggle = document.getElementById('mobileToggle');
@@ -1213,6 +1381,233 @@ window.buyNow = function(productName, unitPrice, btn) {
     const qty = parseInt(card.querySelector('.qty-val').textContent);
     const total = qty * unitPrice;
     showToast(`Added ${qty}x ${productName} — ₹${total} to cart`);
+};
+
+// ==================== Login / OTP System ====================
+const AUTH_KEY = 'amulkool_auth';
+const USERS_KEY = 'amulkool_users';
+let currentOtp = '';
+let currentPhone = '';
+
+function getUsers() {
+    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+}
+function saveUsers(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+function getAuth() {
+    return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+}
+function setAuth(user) {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+}
+function clearAuth() {
+    localStorage.removeItem(AUTH_KEY);
+}
+
+function generateOtp() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function formatPhone(phone) {
+    return `+91 ${phone.slice(0,5)} ${phone.slice(5)}`;
+}
+
+function getInitials(name) {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function openLoginModal() {
+    const auth = getAuth();
+    if (auth) {
+        showProfileStep(auth);
+    } else {
+        goToStep(1);
+    }
+    document.getElementById('loginOverlay').classList.add('open');
+    document.getElementById('loginModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLoginModal() {
+    document.getElementById('loginOverlay').classList.remove('open');
+    document.getElementById('loginModal').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function goToStep(step) {
+    document.querySelectorAll('.login-step').forEach(s => s.classList.remove('active'));
+    document.getElementById('loginStep' + step).classList.add('active');
+
+    if (step === 1) {
+        document.getElementById('loginModalTitle').textContent = 'Welcome Back';
+        document.getElementById('loginModalSubtitle').textContent = 'Sign in with your phone number';
+        document.getElementById('phoneError').classList.add('hidden');
+    } else if (step === 2) {
+        document.getElementById('loginModalTitle').textContent = 'Verify OTP';
+        document.getElementById('loginModalSubtitle').textContent = 'Enter the code to continue';
+        document.getElementById('otpError').classList.add('hidden');
+        clearOtpInputs();
+        setTimeout(() => document.querySelector('.otp-digit').focus(), 100);
+    } else if (step === 3) {
+        document.getElementById('loginModalTitle').textContent = 'Complete Profile';
+        document.getElementById('loginModalSubtitle').textContent = 'One last step';
+        document.getElementById('nameError').classList.add('hidden');
+    }
+}
+
+function showProfileStep(user) {
+    goToStep(4);
+    document.getElementById('loginModalTitle').textContent = 'Your Profile';
+    document.getElementById('loginModalSubtitle').textContent = 'Manage your account';
+    document.getElementById('profileInitials').textContent = getInitials(user.name);
+    document.getElementById('profileName').textContent = user.name;
+    document.getElementById('profilePhone').textContent = formatPhone(user.phone);
+    document.getElementById('profileOrders').textContent = `${user.orders || 0} orders placed`;
+    const joined = new Date(user.joinedAt);
+    document.getElementById('profileJoined').textContent = `Member since ${joined.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
+}
+
+window.sendOtp = function() {
+    const phone = document.getElementById('phoneInput').value.trim();
+    if (phone.length !== 10) {
+        document.getElementById('phoneError').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('phoneError').classList.add('hidden');
+    currentPhone = phone;
+    currentOtp = generateOtp();
+
+    document.getElementById('otpPhoneDisplay').textContent = formatPhone(phone);
+    document.getElementById('demoOtpDisplay').textContent = currentOtp;
+
+    goToStep(2);
+    showToast(`OTP sent to ${formatPhone(phone)}`);
+};
+
+window.resendOtp = function() {
+    currentOtp = generateOtp();
+    document.getElementById('demoOtpDisplay').textContent = currentOtp;
+    clearOtpInputs();
+    document.querySelector('.otp-digit').focus();
+    showToast('New OTP sent');
+};
+
+function clearOtpInputs() {
+    document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
+}
+
+function getOtpValue() {
+    return Array.from(document.querySelectorAll('.otp-digit')).map(i => i.value).join('');
+}
+
+window.handleOtpInput = function(el, idx) {
+    el.value = el.value.replace(/\D/g, '');
+    if (el.value && idx < 3) {
+        document.querySelectorAll('.otp-digit')[idx + 1].focus();
+    }
+};
+
+window.handleOtpKeydown = function(e, idx) {
+    if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        document.querySelectorAll('.otp-digit')[idx - 1].focus();
+    }
+};
+
+window.verifyOtp = function() {
+    const entered = getOtpValue();
+    if (entered.length !== 4) {
+        document.getElementById('otpError').textContent = 'Please enter all 4 digits';
+        document.getElementById('otpError').classList.remove('hidden');
+        return;
+    }
+    if (entered !== currentOtp) {
+        document.getElementById('otpError').textContent = 'Incorrect OTP. Please try again.';
+        document.getElementById('otpError').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('otpError').classList.add('hidden');
+
+    const users = getUsers();
+    const existing = users.find(u => u.phone === currentPhone);
+    if (existing) {
+        setAuth(existing);
+        updateNavLoginState(existing);
+        showProfileStep(existing);
+        showToast(`Welcome back, ${existing.name}!`);
+    } else {
+        goToStep(3);
+    }
+};
+
+window.saveProfile = function() {
+    const name = document.getElementById('nameInput').value.trim();
+    if (!name) {
+        document.getElementById('nameError').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('nameError').classList.add('hidden');
+
+    const user = {
+        phone: currentPhone,
+        name: name,
+        orders: 0,
+        joinedAt: new Date().toISOString()
+    };
+
+    const users = getUsers();
+    users.push(user);
+    saveUsers(users);
+    setAuth(user);
+    updateNavLoginState(user);
+    showProfileStep(user);
+    showToast(`Welcome, ${name}!`);
+};
+
+window.logout = function() {
+    clearAuth();
+    updateNavLoginState(null);
+    closeLoginModal();
+    showToast('Logged out successfully');
+};
+
+function updateNavLoginState(user) {
+    const navText = document.getElementById('navLoginText');
+    const mobileText = document.getElementById('mobileLoginText');
+    const navIcon = document.querySelector('#navLoginBtn .material-symbols-outlined');
+    const mobileIcon = document.querySelector('#mobileLoginBtn .material-symbols-outlined');
+
+    if (user) {
+        navText.textContent = user.name.split(' ')[0];
+        mobileText.textContent = user.name.split(' ')[0];
+        navIcon.textContent = 'account_circle';
+        mobileIcon.textContent = 'account_circle';
+    } else {
+        navText.textContent = 'Login';
+        mobileText.textContent = 'Login';
+        navIcon.textContent = 'person';
+        mobileIcon.textContent = 'person';
+    }
+}
+
+// Restore login state on page load
+(function initAuth() {
+    const auth = getAuth();
+    if (auth) updateNavLoginState(auth);
+})();
+
+// Also increment order count when Buy Now is clicked (for logged-in users)
+const originalBuyNow = window.buyNow;
+window.buyNow = function(productName, unitPrice, btn) {
+    const auth = getAuth();
+    if (auth) {
+        auth.orders = (auth.orders || 0) + 1;
+        setAuth(auth);
+        const users = getUsers();
+        const idx = users.findIndex(u => u.phone === auth.phone);
+        if (idx !== -1) { users[idx] = auth; saveUsers(users); }
+    }
+    originalBuyNow(productName, unitPrice, btn);
 };
 
 // Initial render
