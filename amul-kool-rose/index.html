@@ -5,6 +5,8 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Amul Kool Rose - The Ultimate Rose Refreshment</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Be+Vietnam+Pro:wght@400;500;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script>
@@ -254,12 +256,12 @@
     }
     .otp-inputs {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         justify-content: center;
     }
     .otp-inputs input {
-        width: 48px;
-        height: 56px;
+        width: 44px;
+        height: 52px;
         text-align: center;
         font-size: 24px;
         font-weight: 700;
@@ -275,10 +277,6 @@
     }
     .login-step { display: none; }
     .login-step.active { display: block; }
-    .otp-demo-badge {
-        background: linear-gradient(135deg, #f8d8db 0%, #fef0f2 100%);
-        border: 1px solid #dfbec3;
-    }
 </style>
 </head>
 <body class="font-body text-on-background antialiased selection:bg-primary-container selection:text-on-primary-container overflow-x-hidden">
@@ -921,6 +919,9 @@
     </div>
 </footer>
 
+<!-- reCAPTCHA container (invisible) -->
+<div id="recaptcha-container"></div>
+
 <!-- Login Modal Overlay -->
 <div class="login-overlay fixed inset-0 bg-black/50 z-[100]" id="loginOverlay" onclick="closeLoginModal()"></div>
 
@@ -959,18 +960,14 @@
             <!-- Step 2: OTP Verification -->
             <div class="login-step" id="loginStep2">
                 <p class="font-body text-body-md text-on-surface-variant text-center mb-2">Enter the OTP sent to</p>
-                <p class="font-body font-bold text-on-surface text-center mb-1" id="otpPhoneDisplay">+91 98765 43210</p>
-                <div class="otp-demo-badge rounded-xl px-4 py-2 text-center mb-6">
-                    <p class="font-body text-label-sm text-primary">
-                        <span class="material-symbols-outlined text-[14px] align-middle">info</span>
-                        Demo OTP: <span class="font-bold" id="demoOtpDisplay">----</span>
-                    </p>
-                </div>
+                <p class="font-body font-bold text-on-surface text-center mb-4" id="otpPhoneDisplay">+91 98765 43210</p>
                 <div class="otp-inputs mb-4" id="otpInputs">
                     <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 0)" onkeydown="handleOtpKeydown(event, 0)">
                     <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 1)" onkeydown="handleOtpKeydown(event, 1)">
                     <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 2)" onkeydown="handleOtpKeydown(event, 2)">
                     <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 3)" onkeydown="handleOtpKeydown(event, 3)">
+                    <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 4)" onkeydown="handleOtpKeydown(event, 4)">
+                    <input type="tel" maxlength="1" class="otp-digit" oninput="handleOtpInput(this, 5)" onkeydown="handleOtpKeydown(event, 5)">
                 </div>
                 <p class="font-body text-label-sm text-error mb-4 hidden text-center" id="otpError">Incorrect OTP. Please try again.</p>
                 <button onclick="verifyOtp()" class="w-full bg-primary text-on-primary font-body font-bold text-label-bold py-4 rounded-full hover:bg-primary-container transition-all mb-3" id="verifyOtpBtn">
@@ -1383,11 +1380,25 @@ window.buyNow = function(productName, unitPrice, btn) {
     showToast(`Added ${qty}x ${productName} — ₹${total} to cart`);
 };
 
-// ==================== Login / OTP System ====================
+// ==================== Firebase Phone Auth ====================
+const firebaseConfig = {
+    apiKey: "AIzaSyAiUdr9SjTLcfvE941I1CY8ixND7QF9ZlE",
+    authDomain: "amoolcol-authenticaton.firebaseapp.com",
+    projectId: "amoolcol-authenticaton",
+    storageBucket: "amoolcol-authenticaton.firebasestorage.app",
+    messagingSenderId: "80940982749",
+    appId: "1:80940982749:web:a8744595e479f01a47d634",
+    measurementId: "G-3DPRVTLS7P"
+};
+
+firebase.initializeApp(firebaseConfig);
+const firebaseAuth = firebase.auth();
+
 const AUTH_KEY = 'amulkool_auth';
 const USERS_KEY = 'amulkool_users';
-let currentOtp = '';
 let currentPhone = '';
+let confirmationResult = null;
+let recaptchaVerifier = null;
 
 function getUsers() {
     return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
@@ -1395,18 +1406,14 @@ function getUsers() {
 function saveUsers(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
-function getAuth() {
+function getLocalAuth() {
     return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
 }
-function setAuth(user) {
+function setLocalAuth(user) {
     localStorage.setItem(AUTH_KEY, JSON.stringify(user));
 }
-function clearAuth() {
+function clearLocalAuth() {
     localStorage.removeItem(AUTH_KEY);
-}
-
-function generateOtp() {
-    return String(Math.floor(1000 + Math.random() * 9000));
 }
 
 function formatPhone(phone) {
@@ -1417,8 +1424,19 @@ function getInitials(name) {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
+function setupRecaptcha() {
+    if (recaptchaVerifier) {
+        recaptchaVerifier.clear();
+        document.getElementById('recaptcha-container').innerHTML = '';
+    }
+    recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+        size: 'invisible',
+        callback: () => {}
+    });
+}
+
 function openLoginModal() {
-    const auth = getAuth();
+    const auth = getLocalAuth();
     if (auth) {
         showProfileStep(auth);
     } else {
@@ -1445,7 +1463,7 @@ function goToStep(step) {
         document.getElementById('phoneError').classList.add('hidden');
     } else if (step === 2) {
         document.getElementById('loginModalTitle').textContent = 'Verify OTP';
-        document.getElementById('loginModalSubtitle').textContent = 'Enter the code to continue';
+        document.getElementById('loginModalSubtitle').textContent = 'Check your phone for the code';
         document.getElementById('otpError').classList.add('hidden');
         clearOtpInputs();
         setTimeout(() => document.querySelector('.otp-digit').focus(), 100);
@@ -1468,7 +1486,14 @@ function showProfileStep(user) {
     document.getElementById('profileJoined').textContent = `Member since ${joined.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
 }
 
-window.sendOtp = function() {
+function setButtonLoading(btnId, loading, text) {
+    const btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    btn.textContent = loading ? 'Please wait...' : text;
+    btn.style.opacity = loading ? '0.7' : '1';
+}
+
+window.sendOtp = async function() {
     const phone = document.getElementById('phoneInput').value.trim();
     if (phone.length !== 10) {
         document.getElementById('phoneError').classList.remove('hidden');
@@ -1476,21 +1501,50 @@ window.sendOtp = function() {
     }
     document.getElementById('phoneError').classList.add('hidden');
     currentPhone = phone;
-    currentOtp = generateOtp();
 
-    document.getElementById('otpPhoneDisplay').textContent = formatPhone(phone);
-    document.getElementById('demoOtpDisplay').textContent = currentOtp;
+    setButtonLoading('sendOtpBtn', true, 'Send OTP');
 
-    goToStep(2);
-    showToast(`OTP sent to ${formatPhone(phone)}`);
+    try {
+        setupRecaptcha();
+        const phoneNumber = '+91' + phone;
+        confirmationResult = await firebaseAuth.signInWithPhoneNumber(phoneNumber, recaptchaVerifier);
+        document.getElementById('otpPhoneDisplay').textContent = formatPhone(phone);
+        goToStep(2);
+        showToast(`OTP sent to ${formatPhone(phone)}`);
+    } catch (error) {
+        console.error('Send OTP error:', error);
+        let msg = 'Failed to send OTP. Please try again.';
+        if (error.code === 'auth/too-many-requests') {
+            msg = 'Too many attempts. Please try again later.';
+        } else if (error.code === 'auth/invalid-phone-number') {
+            msg = 'Invalid phone number. Please check and try again.';
+        } else if (error.code === 'auth/quota-exceeded') {
+            msg = 'SMS quota exceeded. Please try again tomorrow.';
+        }
+        document.getElementById('phoneError').textContent = msg;
+        document.getElementById('phoneError').classList.remove('hidden');
+        setupRecaptcha();
+    } finally {
+        setButtonLoading('sendOtpBtn', false, 'Send OTP');
+    }
 };
 
-window.resendOtp = function() {
-    currentOtp = generateOtp();
-    document.getElementById('demoOtpDisplay').textContent = currentOtp;
-    clearOtpInputs();
-    document.querySelector('.otp-digit').focus();
-    showToast('New OTP sent');
+window.resendOtp = async function() {
+    setButtonLoading('verifyOtpBtn', true, 'Verify OTP');
+    try {
+        setupRecaptcha();
+        const phoneNumber = '+91' + currentPhone;
+        confirmationResult = await firebaseAuth.signInWithPhoneNumber(phoneNumber, recaptchaVerifier);
+        clearOtpInputs();
+        document.querySelector('.otp-digit').focus();
+        showToast('New OTP sent');
+    } catch (error) {
+        console.error('Resend OTP error:', error);
+        showToast('Failed to resend OTP. Try again.');
+        setupRecaptcha();
+    } finally {
+        setButtonLoading('verifyOtpBtn', false, 'Verify OTP');
+    }
 };
 
 function clearOtpInputs() {
@@ -1503,7 +1557,7 @@ function getOtpValue() {
 
 window.handleOtpInput = function(el, idx) {
     el.value = el.value.replace(/\D/g, '');
-    if (el.value && idx < 3) {
+    if (el.value && idx < 5) {
         document.querySelectorAll('.otp-digit')[idx + 1].focus();
     }
 };
@@ -1514,29 +1568,40 @@ window.handleOtpKeydown = function(e, idx) {
     }
 };
 
-window.verifyOtp = function() {
+window.verifyOtp = async function() {
     const entered = getOtpValue();
-    if (entered.length !== 4) {
-        document.getElementById('otpError').textContent = 'Please enter all 4 digits';
+    if (entered.length !== 6) {
+        document.getElementById('otpError').textContent = 'Please enter all 6 digits';
         document.getElementById('otpError').classList.remove('hidden');
         return;
     }
-    if (entered !== currentOtp) {
-        document.getElementById('otpError').textContent = 'Incorrect OTP. Please try again.';
-        document.getElementById('otpError').classList.remove('hidden');
-        return;
-    }
-    document.getElementById('otpError').classList.add('hidden');
 
-    const users = getUsers();
-    const existing = users.find(u => u.phone === currentPhone);
-    if (existing) {
-        setAuth(existing);
-        updateNavLoginState(existing);
-        showProfileStep(existing);
-        showToast(`Welcome back, ${existing.name}!`);
-    } else {
-        goToStep(3);
+    setButtonLoading('verifyOtpBtn', true, 'Verify OTP');
+
+    try {
+        await confirmationResult.confirm(entered);
+        document.getElementById('otpError').classList.add('hidden');
+
+        const users = getUsers();
+        const existing = users.find(u => u.phone === currentPhone);
+        if (existing) {
+            setLocalAuth(existing);
+            updateNavLoginState(existing);
+            showProfileStep(existing);
+            showToast(`Welcome back, ${existing.name}!`);
+        } else {
+            goToStep(3);
+        }
+    } catch (error) {
+        console.error('Verify OTP error:', error);
+        let msg = 'Incorrect OTP. Please try again.';
+        if (error.code === 'auth/code-expired') {
+            msg = 'OTP expired. Please request a new one.';
+        }
+        document.getElementById('otpError').textContent = msg;
+        document.getElementById('otpError').classList.remove('hidden');
+    } finally {
+        setButtonLoading('verifyOtpBtn', false, 'Verify OTP');
     }
 };
 
@@ -1558,14 +1623,15 @@ window.saveProfile = function() {
     const users = getUsers();
     users.push(user);
     saveUsers(users);
-    setAuth(user);
+    setLocalAuth(user);
     updateNavLoginState(user);
     showProfileStep(user);
     showToast(`Welcome, ${name}!`);
 };
 
 window.logout = function() {
-    clearAuth();
+    firebaseAuth.signOut();
+    clearLocalAuth();
     updateNavLoginState(null);
     closeLoginModal();
     showToast('Logged out successfully');
@@ -1592,17 +1658,17 @@ function updateNavLoginState(user) {
 
 // Restore login state on page load
 (function initAuth() {
-    const auth = getAuth();
+    const auth = getLocalAuth();
     if (auth) updateNavLoginState(auth);
 })();
 
 // Also increment order count when Buy Now is clicked (for logged-in users)
 const originalBuyNow = window.buyNow;
 window.buyNow = function(productName, unitPrice, btn) {
-    const auth = getAuth();
+    const auth = getLocalAuth();
     if (auth) {
         auth.orders = (auth.orders || 0) + 1;
-        setAuth(auth);
+        setLocalAuth(auth);
         const users = getUsers();
         const idx = users.findIndex(u => u.phone === auth.phone);
         if (idx !== -1) { users[idx] = auth; saveUsers(users); }
